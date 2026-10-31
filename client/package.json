@@ -13,6 +13,7 @@
     "build:wasm:dev": "tsx ../.script/build-wasm.ts --dev"
   },
   "dependencies": {
+    "@mantine/core": "^9.7.4",
     "@tauri-apps/api": "^2.12.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

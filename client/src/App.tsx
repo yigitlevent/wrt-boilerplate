@@ -1,3 +1,5 @@
+import { Button, Container, Group, Stack, Text, Title } from '@mantine/core'
+import '@mantine/core/styles.css'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { useState } from 'react'
 
@@ -17,18 +19,22 @@ export function App(): ReactElement {
   }
 
   return (
-    <main>
-      <h1>wrt boilerplate</h1>
+    <Container py="md">
+      <Stack>
+        <Title>wrt boilerplate</Title>
 
-      <button type="button" onClick={() => { setCount(Clamp(add(count, 1), 0, MaxCount)) }}>
-        {`wasm add: ${count}`}
-      </button>
+        <Group>
+          <Button onClick={() => { setCount(Clamp(add(count, 1), 0, MaxCount)) }}>
+            {`wasm add: ${count}`}
+          </Button>
 
-      <button type="button" disabled={!isTauri()} onClick={() => { void onGreet() }}>
-        tauri invoke
-      </button>
+          <Button disabled={!isTauri()} onClick={() => { void onGreet() }}>
+            tauri invoke
+          </Button>
+        </Group>
 
-      <p>{greeting}</p>
-    </main>
+        <Text>{greeting}</Text>
+      </Stack>
+    </Container>
   )
 }

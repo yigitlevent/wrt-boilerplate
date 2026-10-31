@@ -1,6 +1,6 @@
 # wrt-boilerplate
 
-A starter template for desktop apps built with Tauri 2, React 19, and Rust compiled to WebAssembly. The UI lives in React, heavy computation runs as wasm inside the page, and native OS access goes through Tauri. The same client runs in a desktop window or a plain browser.
+A starter template for desktop apps built with Tauri 2, React 19, Mantine UI, and Rust compiled to WebAssembly. The UI lives in React, heavy computation runs as wasm inside the page, and native OS access goes through Tauri. The same client runs in a desktop window or a plain browser.
 
 The tooling is already set up: ESLint with the recommended rule sets, knip for dead code, vitest, a husky pre-commit hook, and GitHub Actions workflows for tests and for desktop releases on Linux, macOS, and Windows. The demo app is a single page with one wasm call and one Tauri command, so there is little to delete when you start.
 
@@ -52,6 +52,7 @@ This boilerplate is extracted from a personal project that used the same stack t
 
 - [Tauri](https://tauri.app/start/)
 - [React](https://react.dev/reference/react)
+- [Mantine](https://mantine.dev/getting-started/)
 - [Vite](https://vite.dev/guide/)
 - [TypeScript](https://www.typescriptlang.org/docs/)
 
