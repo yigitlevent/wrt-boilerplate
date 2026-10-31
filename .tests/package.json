@@ -1,0 +1,15 @@
+{
+  "name": "wrt-boilerplate-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.5",
+    "jsdom": "^30.1.3",
+    "vitest": "^5.0.5"
+  }
+}

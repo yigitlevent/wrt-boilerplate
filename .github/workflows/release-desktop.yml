@@ -1,0 +1,131 @@
+name: Release Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version"
+        required: true
+        type: string
+      build_linux:
+        description: "Build Linux (AppImage)"
+        required: false
+        type: boolean
+        default: true
+      build_macos_arm:
+        description: "Build macOS (aarch64)"
+        required: false
+        type: boolean
+        default: true
+      build_macos_x86:
+        description: "Build macOS (x86_64)"
+        required: false
+        type: boolean
+        default: true
+      build_windows:
+        description: "Build Windows"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  select-targets:
+    name: Select Targets
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - name: Select
+        id: select
+        run: |
+          targets='[]'
+          if [ "${{ inputs.build_linux }}" = "true" ]; then
+            targets=$(echo "$targets" | jq -c '. + [{"platform":"ubuntu-24.04","args":"--bundles appimage","container":"debian:sid"}]')
+          fi
+          if [ "${{ inputs.build_macos_arm }}" = "true" ]; then
+            targets=$(echo "$targets" | jq -c '. + [{"platform":"macos-latest","args":"--target aarch64-apple-darwin","container":""}]')
+          fi
+          if [ "${{ inputs.build_macos_x86 }}" = "true" ]; then
+            targets=$(echo "$targets" | jq -c '. + [{"platform":"macos-latest","args":"--target x86_64-apple-darwin","container":""}]')
+          fi
+          if [ "${{ inputs.build_windows }}" = "true" ]; then
+            targets=$(echo "$targets" | jq -c '. + [{"platform":"windows-latest","args":"","container":""}]')
+          fi
+          echo "matrix={\"include\":$targets}" >> "$GITHUB_OUTPUT"
+
+  build-desktop:
+    name: Build Desktop (${{ matrix.platform }})
+    needs: select-targets
+    if: needs.select-targets.outputs.matrix != '{"include":[]}'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.select-targets.outputs.matrix) }}
+    runs-on: ${{ matrix.platform }}
+    container: ${{ matrix.container }}
+    steps:
+      - name: Install git (container only)
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          apt-get update
+          apt-get install -y git ca-certificates
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          apt-get update
+          apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.97.1"
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client-tauri -> target
+
+      - name: Install wasm-opt (Linux)
+        if: matrix.platform == 'ubuntu-24.04'
+        run: apt-get install -y binaryen
+
+      - name: Install wasm-opt (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: brew install binaryen
+
+      - name: Install wasm-opt (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          # No chocolatey package exists for binaryen — pull the official release tarball
+          # instead. Version pinned deliberately (binaryen has no "latest" alias URL); bump by
+          # hand if a newer wasm-opt is ever needed.
+          $version = "version_132"
+          Invoke-WebRequest -Uri "https://github.com/WebAssembly/binaryen/releases/download/$version/binaryen-$version-x86_64-windows.tar.gz" -OutFile binaryen.tar.gz
+          tar -xzf binaryen.tar.gz
+          $installDir = Join-Path (Get-Location) "binaryen-$version"
+          Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $installDir "bin")
+
+      - run: cargo install wasm-bindgen-cli --version 0.2.126 --locked
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPIMAGE_EXTRACT_AND_RUN: ${{ matrix.platform == 'ubuntu-24.04' && '1' || '' }}
+        with:
+          projectPath: client-tauri
+          tagName: desktop-v__VERSION__
+          releaseName: ${{ github.event.inputs.version }}
+          releaseDraft: true
+          args: '${{ matrix.args }} --config {"version":"${{ github.event.inputs.version }}"}'
